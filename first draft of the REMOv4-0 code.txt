@@ -1,0 +1,115 @@
+Below is the first draft of the REMOv4-0 code, with improvements in error handling, organization, efficiency, and overall code structure.
+
+python
+
+# main.py
+from fastapi import FastAPI
+from remo_v4 import REMOv4
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+app = FastAPI()
+
+# Initialize REMOv4
+remo = REMOv4()
+
+
+@app.post("/add_message_v4")
+async def add_message_v4(message: str, speaker: str, timestamp: float):
+    remo.add_message(message, speaker, timestamp)
+
+
+@app.get("/search_v4")
+async def search_v4(query: str):
+    results = remo.search(query)
+    return {"results": results}
+
+# remo_v4.py
+from memory_tree import MemoryTree
+from message_store import MessageStore
+from embeddings import EmbeddingModel
+from typing import List
+
+class REMOv4:
+    def __init__(self, config: dict = None):
+        self.memory_tree = MemoryTree()
+        self.message_store = MessageStore()
+        self.embedding_model = EmbeddingModel()
+        
+        if config is not None:
+            self.config = config
+        else:
+            self.config = {
+                "max_cluster_size": 10
+            }
+    
+    def add_message(self, message: str, speaker: str, timestamp: float):
+        message_id = self.message_store.add_message(message, speaker, timestamp)
+        embedding = self.embedding_model.generate_embedding(message)
+        self.memory_tree.add_message(embedding, message_id, self.config["max_cluster_size"])
+    
+    def search(self, query: str) -> List[str]:
+        query_embedding = self.embedding_model.generate_embedding(query)
+        message_ids = self.memory_tree.search(query_embedding)
+        return [self.message_store.get_message(message_id) for message_id in message_ids]
+
+# memory_tree.py
+from typing import List
+
+class MemoryTree:
+    def __init__(self):
+        self.tree = []
+
+    def add_message(self, embedding, message_id, max_cluster_size):
+        # Add message logic goes here
+        
+    def search(self, query_embedding) -> List[int]:
+        # Search logic goes here
+
+# message_store.py
+from typing import Dict, Tuple
+import json
+import os
+
+class MessageStore:
+    def __init__(self):
+        self.file_path = "message_store.json"
+        
+        if not os.path.exists(self.file_path):
+            with open(self.file_path, "w") as f:
+                json.dump({}, f)
+    
+    def add_message(self, message: str, speaker: str, timestamp: float) -> int:
+        with open(self.file_path, "r") as f:
+            message_store = json.load(f)
+        
+        message_id = len(message_store)
+        message_data = {"message": message, "speaker": speaker, "timestamp": timestamp}
+        
+        message_store[str(message_id)] = message_data
+        
+        with open(self.file_path, "w") as f:
+            json.dump(message_store, f)
+        
+        return message_id
+    
+    def get_message(self, message_id: int) -> Dict[str, str]:
+        with open(self.file_path, "r") as f:
+            message_store = json.load(f)
+        
+        return message_store[str(message_id)]
+
+# embeddings.py
+from typing import List
+import tensorflow_hub as hub
+
+class EmbeddingModel:
+    def __init__(self):
+        self.model = None
+
+    def _load_model(self):
+        self.model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+
+    def generate_embedding(self, text: str) -> List[float]:
+        if self
